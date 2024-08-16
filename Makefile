@@ -1,0 +1,31 @@
+CC := g++
+CFLAGS := -Wextra -O3
+SOLVER_CFLAGS := $(CFLAGS) -Ieigen-3.4.0
+GENERATE_VIDEO_CFLAGS := $(CFLAGS) -std=c++11 -lglfw -lGLEW -lGL -Ieigen-3.4.0
+
+BUILD_DIR := bin
+
+DUMP_DIR := dump
+
+GENERATE_VIDEO_SRC := generate_video.cc
+GENERATE_VIDEO_TARGET := $(BUILD_DIR)/generate-video
+
+SOLVER_SRC := main.cc
+SOLVER_TARGET := $(BUILD_DIR)/solver
+
+.PHONY: all build build-generate-video clean run
+
+all: $(SOLVER_TARGET) $(GENERATE_VIDEO_TARGET)
+
+$(SOLVER_TARGET): $(SOLVER_SRC)
+	$(CC) $(SOLVER_SRC) -o $(SOLVER_TARGET) $(SOLVER_CFLAGS)
+
+$(GENERATE_VIDEO_TARGET): $(GENERATE_VIDEO_SRC)
+	$(CC) $(GENERATE_VIDEO_SRC) -o $(GENERATE_VIDEO_TARGET) $(GENERATE_VIDEO_CFLAGS)
+
+clean:
+	rm -rf $(BUILD_DIR)/* $(DUMP_DIR)/*
+
+run: $(SOLVER_TARGET) $(GENERATE_VIDEO_TARGET)
+	$(SOLVER_TARGET)
+	$(GENERATE_VIDEO_TARGET)
