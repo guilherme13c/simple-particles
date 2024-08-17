@@ -1,6 +1,6 @@
 CC := g++
 CFLAGS := -Wextra -O3 -Iinclude
-SOLVER_CFLAGS := $(CFLAGS) -Ieigen-3.4.0
+SOLVER_CFLAGS := $(CFLAGS) -Ieigen-3.4.0 -Iboost_1_86_0
 GENERATE_VIDEO_CFLAGS := $(CFLAGS) -std=c++11 -lglfw -lGLEW -lGL -Ieigen-3.4.0
 
 BUILD_DIR := bin
