@@ -48,7 +48,7 @@ int main() {
         return -1;
     }
 
-    std::ifstream dump_file("dump/simulation.bin", std::ios::binary);
+    std::ifstream dump_file("dump/simulation.dump", std::ios::binary);
     if (!dump_file.is_open()) {
         std::cerr << "Failed to open dump file\n";
         return -1;

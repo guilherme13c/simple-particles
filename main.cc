@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <particle.hh>
+#include <utils/config.hh>
 #include <utils/save.hh>
 #include <vector>
 #include <world.hh>
@@ -20,21 +21,24 @@ Eigen::Vector3d calculate_gravitational_force(const Particle &p1,
     return force_magnitude * direction;
 }
 
-int main() {
-    std::vector<Particle> particles = {
-        Particle(Eigen::Vector3d(0, 0, 0), Eigen::Vector3d(0, 0, 0), 1e10),
-        Particle(Eigen::Vector3d(1, 0, 0), Eigen::Vector3d(0, 1, 0), 1e10)};
+int main(int argc, char **argv) {
+    struct SimulationConfig cfg;
+    parse_simulation_config(cfg, argc, argv);
 
-    double time_step = 0.01;
-    int num_steps = 1000;
-
-    std::ofstream dump_file("dump/simulation.bin", std::ios::binary);
-
-    for (int step = 0; step < num_steps; ++step) {
-        update_particles(particles, time_step, calculate_gravitational_force);
-        save_simulation_state(particles, dump_file);
+    std::vector<Particle> particles;
+    if (cfg.initial_state.is_open()) {
+        read_initial_state(cfg.initial_state, particles);
+    } else {
+        std::cerr << "Error: Initial state file is not open." << std::endl;
+        return 1;
     }
 
-    dump_file.close();
+    for (u_int64_t step = 0; step < cfg.num_steps; ++step) {
+        update_particles(particles, cfg.time_step,
+                         calculate_gravitational_force);
+        save_simulation_state(particles, cfg.dump_file);
+    }
+
+    cfg.dump_file.close();
     return 0;
 }
