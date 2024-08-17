@@ -29,15 +29,16 @@ Eigen::Vector3d calculate_gravitational_force(const Particle &p1,
 }
 
 // Function to update the particles
-void update_particles(std::vector<Particle> &particles, double time_step) {
+void update_particles(std::vector<Particle> &particles, double time_step,
+                      Eigen::Vector3d (*interaction)(const Particle &,
+                                                     const Particle &)) {
     size_t n = particles.size();
     std::vector<Eigen::Vector3d> forces(n, Eigen::Vector3d::Zero());
 
     // Calculate forces on each particle
     for (size_t i = 0; i < n; ++i) {
         for (size_t j = i + 1; j < n; ++j) {
-            Eigen::Vector3d force =
-                calculate_gravitational_force(particles[i], particles[j]);
+            Eigen::Vector3d force = interaction(particles[i], particles[j]);
             forces[i] += force;
             forces[j] -= force; // Newton's third law
         }
@@ -79,7 +80,7 @@ int main() {
 
     // Run the simulation
     for (int step = 0; step < num_steps; ++step) {
-        update_particles(particles, time_step);
+        update_particles(particles, time_step, calculate_gravitational_force);
         save_simulation_state(particles, dump_file);
     }
 
