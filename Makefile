@@ -1,5 +1,5 @@
 CC := g++
-CFLAGS := -Wextra -O3
+CFLAGS := -Wextra -O3 -Iinclude
 SOLVER_CFLAGS := $(CFLAGS) -Ieigen-3.4.0
 GENERATE_VIDEO_CFLAGS := $(CFLAGS) -std=c++11 -lglfw -lGLEW -lGL -Ieigen-3.4.0
 
