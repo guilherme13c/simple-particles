@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
 
     std::vector<Particle> particles;
     if (cfg.initial_state.is_open()) {
-        read_initial_state(cfg.initial_state, particles);
+        read_initial_state(cfg.initial_state, particles, cfg);
     } else {
         std::cerr << "Error: Initial state file is not open." << std::endl;
         return 1;

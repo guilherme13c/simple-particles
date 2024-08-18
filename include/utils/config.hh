@@ -8,13 +8,13 @@
 #include <stdexcept>
 
 struct SimulationConfig {
-    uint64_t particle_count;     // -N
-    uint16_t world_width;        // -W
-    uint16_t world_height;       // -H
+    uint64_t particle_count;
+    uint64_t num_steps;
+    float time_step;
+    uint16_t world_width;
+    uint16_t world_height;
     std::ifstream initial_state; // -i
     std::ofstream dump_file;     // -o
-    uint64_t num_steps;          // -s
-    float time_step;             // -t
 };
 
 void parse_simulation_config(struct SimulationConfig &cfg, int argc,
@@ -23,19 +23,10 @@ void parse_simulation_config(struct SimulationConfig &cfg, int argc,
 
     po::options_description desc("Allowed options");
     desc.add_options()("help,h", "produce help message")(
-        "particle-count,N",
-        po::value<uint64_t>(&cfg.particle_count)->required(),
-        "number of particles")(
-        "width,W", po::value<uint16_t>(&cfg.world_width)->required(),
-        "world width")("height,H",
-                       po::value<uint16_t>(&cfg.world_height)->required(),
-                       "world height")("input,i", po::value<std::string>(),
-                                       "input file with initial state")(
-        "dump,o", po::value<std::string>(), "file to dump simulation results")(
-        "step-count,s", po::value<uint64_t>(&cfg.num_steps)->required(),
-        "number of simulation steps")(
-        "time-step,t", po::value<float>(&cfg.time_step)->required(),
-        "time step size");
+        "input,i", po::value<std::string>()->required(),
+        "input file with initial state")("dump,o",
+                                         po::value<std::string>()->required(),
+                                         "file to dump simulation results");
 
     po::variables_map vm;
     try {
@@ -71,8 +62,11 @@ void parse_simulation_config(struct SimulationConfig &cfg, int argc,
     }
 }
 
-void read_initial_state(std::ifstream &input,
-                        std::vector<Particle> &particles) {
+void read_initial_state(std::ifstream &input, std::vector<Particle> &particles,
+                        struct SimulationConfig &cfg) {
+    input >> cfg.particle_count >> cfg.num_steps >> cfg.time_step >>
+        cfg.world_width >> cfg.world_height;
+
     double x, y, z, vx, vy, vz, mass;
     while (input >> x >> y >> z >> vx >> vy >> vz >> mass) {
         Particle p;
@@ -80,5 +74,45 @@ void read_initial_state(std::ifstream &input,
         p.velocity = Eigen::Vector3d(vx, vy, vz);
         p.mass = mass;
         particles.push_back(p);
+    }
+}
+
+struct VideoGenerationConfig {
+    std::ifstream dump_file; // -i
+};
+
+void parse_video_generation_config(struct VideoGenerationConfig &cfg, int argc,
+                                   char *argv[]) {
+    namespace po = boost::program_options;
+
+    po::options_description desc("Allowed options");
+    desc.add_options()("help,h", "produce help message")(
+        "input,i", po::value<std::string>()->required(),
+        "input file with dump of the states");
+
+    po::variables_map vm;
+    try {
+        po::store(po::parse_command_line(argc, argv, desc), vm);
+
+        if (vm.count("help")) {
+            std::cout << desc << std::endl;
+            return;
+        }
+
+        po::notify(vm);
+
+        if (vm.count("input")) {
+            cfg.dump_file.open(vm["input"].as<std::string>(), std::ios::in);
+            if (!cfg.dump_file.is_open()) {
+                throw std::runtime_error("Failed to open input file");
+            }
+        }
+    } catch (const po::error &e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        std::cerr << desc << std::endl;
+        throw;
+    } catch (const std::exception &e) {
+        std::cerr << "Exception: " << e.what() << std::endl;
+        throw;
     }
 }

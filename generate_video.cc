@@ -28,14 +28,34 @@ void render_particles(const std::vector<Particle> &particles) {
     glDisable(GL_POINT_SMOOTH);
 }
 
-int main() {
+int main(int argc, char **argv) {
+    struct VideoGenerationConfig vcfg;
+    parse_video_generation_config(vcfg, argc, argv);
+
+    if (!vcfg.dump_file.is_open()) {
+        std::cerr << "Failed to open dump file\n";
+        return -1;
+    }
+
+    struct SimulationConfig scfg;
+    if (!read_simulation_config(vcfg.dump_file, scfg)) {
+        std::cerr << "Failed to read simulation configuration\n";
+        return -1;
+    }
+
+    std::vector<Particle> particles(scfg.particle_count);
+    if (!read_simulation_state(vcfg.dump_file, particles)) {
+        std::cerr << "Failed to read simulation data\n";
+        return -1;
+    }
+
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW\n";
         return -1;
     }
 
-    GLFWwindow *window =
-        glfwCreateWindow(1200, 800, "Particle Simulation", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(scfg.world_width, scfg.world_height,
+                                          "Simple Particles", NULL, NULL);
     if (!window) {
         std::cerr << "Failed to create GLFW window\n";
         glfwTerminate();
@@ -49,38 +69,20 @@ int main() {
         return -1;
     }
 
-    std::ifstream dump_file("dump/simulation.dump", std::ios::binary);
-    if (!dump_file.is_open()) {
-        std::cerr << "Failed to open dump file\n";
-        return -1;
-    }
-
-    struct SimulationConfig cfg;
-    if (!read_simulation_config(dump_file, cfg)) {
-        std::cerr << "Failed to read simulation configuration\n";
-        return -1;
-    }
-
-    std::vector<Particle> particles(cfg.particle_count);
-    if (!read_simulation_state(dump_file, particles)) {
-        std::cerr << "Failed to read simulation data\n";
-        return -1;
-    }
-
     while (!glfwWindowShouldClose(window)) {
         render_particles(particles);
 
-        if (!read_simulation_state(dump_file, particles))
+        if (!read_simulation_state(vcfg.dump_file, particles))
             break;
 
         std::this_thread::sleep_for(
-            std::chrono::milliseconds(static_cast<int>(cfg.time_step * 1000)));
+            std::chrono::milliseconds(static_cast<int>(scfg.time_step * 1000)));
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    dump_file.close();
+    vcfg.dump_file.close();
     glfwTerminate();
     return 0;
 }
