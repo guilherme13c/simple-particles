@@ -14,7 +14,7 @@ struct SimulationConfig {
     std::ifstream initial_state; // -i
     std::ofstream dump_file;     // -o
     uint64_t num_steps;          // -s
-    float time_step;             // -dt
+    float time_step;             // -t
 };
 
 void parse_simulation_config(struct SimulationConfig &cfg, int argc,

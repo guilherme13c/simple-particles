@@ -5,6 +5,7 @@
 #include <iostream>
 #include <particle.hh>
 #include <thread>
+#include <utils/config.hh>
 #include <utils/save.hh>
 #include <vector>
 
@@ -54,7 +55,13 @@ int main() {
         return -1;
     }
 
-    std::vector<Particle> particles(2);
+    struct SimulationConfig cfg;
+    if (!read_simulation_config(dump_file, cfg)) {
+        std::cerr << "Failed to read simulation configuration\n";
+        return -1;
+    }
+
+    std::vector<Particle> particles(cfg.particle_count);
     if (!read_simulation_state(dump_file, particles)) {
         std::cerr << "Failed to read simulation data\n";
         return -1;
@@ -66,7 +73,8 @@ int main() {
         if (!read_simulation_state(dump_file, particles))
             break;
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(static_cast<int>(cfg.time_step * 1000)));
 
         glfwSwapBuffers(window);
         glfwPollEvents();

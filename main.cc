@@ -33,6 +33,8 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    save_simulation_config(cfg.dump_file, cfg);
+
     for (u_int64_t step = 0; step < cfg.num_steps; ++step) {
         update_particles(particles, cfg.time_step,
                          calculate_gravitational_force);
