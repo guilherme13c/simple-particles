@@ -1,7 +1,7 @@
 CC := g++
 CFLAGS := -Wextra -O3 -Iinclude
 SOLVER_CFLAGS := $(CFLAGS) -Ieigen-3.4.0 -Iboost_1_86_0/build/include -Lboost_1_86_0/build/lib -l:libboost_program_options.a
-GENERATE_VIDEO_CFLAGS := $(CFLAGS) -std=c++11 -lglfw -lGLEW -lGL -Ieigen-3.4.0 -Iboost_1_86_0/build/include -Lboost_1_86_0/build/lib -l:libboost_program_options.a
+GENERATE_VIDEO_CFLAGS := $(CFLAGS) -std=c++11 -lglfw -lGLEW -lGL -lGLU -Ieigen-3.4.0 -Iboost_1_86_0/build/include -Lboost_1_86_0/build/lib -l:libboost_program_options.a
 
 BUILD_DIR := bin
 INCLUDE_DIR := include
