@@ -3,6 +3,8 @@ CFLAGS := -Wextra -O3 -Iinclude
 SOLVER_CFLAGS := $(CFLAGS) -Ieigen-3.4.0 -Iboost_1_86_0/build/include -Lboost_1_86_0/build/lib -l:libboost_program_options.a
 GENERATE_VIDEO_CFLAGS := $(CFLAGS) -std=c++11 -lglfw -lGLEW -lGL -lGLU -Ieigen-3.4.0 -Iboost_1_86_0/build/include -Lboost_1_86_0/build/lib -l:libboost_program_options.a
 
+PYTHON := python3
+
 BUILD_DIR := bin
 INCLUDE_DIR := include
 DUMP_DIR := dump
@@ -16,7 +18,7 @@ SOLVER_TARGET := $(BUILD_DIR)/solver
 INPUT_FILE = "init_state.txt"
 DUMP_FILE = "dump/simulation.dump"
 
-.PHONY: all build build-generate-video clean run
+.PHONY: all build build-generate-video clean run random-init profile
 
 all: $(SOLVER_TARGET) $(GENERATE_VIDEO_TARGET)
 
@@ -27,8 +29,16 @@ $(GENERATE_VIDEO_TARGET): $(GENERATE_VIDEO_SRC)
 	$(CC) $(GENERATE_VIDEO_SRC) -o $(GENERATE_VIDEO_TARGET) $(GENERATE_VIDEO_CFLAGS)
 
 clean:
-	rm -rf $(BUILD_DIR)/* $(DUMP_DIR)/*
+	rm -rf $(BUILD_DIR)/* $(DUMP_DIR)/* gmon.out analysis.txt
 
 run: $(SOLVER_TARGET) $(GENERATE_VIDEO_TARGET)
 	$(SOLVER_TARGET) -i $(INPUT_FILE) -o $(DUMP_FILE)
 	$(GENERATE_VIDEO_TARGET) -i $(DUMP_FILE)
+
+random-init:
+	$(PYTHON) ./scripts/generate_random_initial_state.py $(arg1) $(arg2) $(arg3) $(arg4) $(arg5)
+
+profile: $(SOLVER_SRC)
+	$(CC) $(SOLVER_SRC) -o $(SOLVER_TARGET) $(SOLVER_CFLAGS) -pg
+	$(SOLVER_TARGET) -i $(INPUT_FILE) -o $(DUMP_FILE)
+	gprof $(SOLVER_TARGET) gmon.out > analysis.txt

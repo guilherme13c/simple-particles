@@ -10,8 +10,7 @@
 // Constants
 const double G = 6.67430e-11; // Gravitational constant
 
-Eigen::Vector3d calculate_gravitational_interaction(const Particle &p1,
-                                                    const Particle &p2) {
+Eigen::Vector3d calculate_interaction(const Particle &p1, const Particle &p2) {
     Eigen::Vector3d direction = p2.position - p1.position;
     double distance = direction.norm();
     if (distance == 0)
@@ -20,7 +19,7 @@ Eigen::Vector3d calculate_gravitational_interaction(const Particle &p1,
     direction.normalize();
     double force_magnitude = G * p1.mass * p2.mass / (distance * distance);
 
-    return force_magnitude * direction * 0.1;
+    return force_magnitude * direction;
 }
 
 int main(int argc, char **argv) {
@@ -38,8 +37,7 @@ int main(int argc, char **argv) {
     save_simulation_config(cfg.dump_file, cfg);
 
     for (u_int64_t step = 0; step < cfg.num_steps; ++step) {
-        update_particles(particles, cfg.time_step,
-                         calculate_gravitational_interaction);
+        update_particles(particles, cfg.time_step, calculate_interaction, 50);
         save_simulation_state(particles, cfg.dump_file);
     }
 
