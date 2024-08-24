@@ -1,16 +1,11 @@
+#include <2f.h>
 #include <iostream>
-// #include <mpi.h>
-#include <particle.h>
-#include <world.h>
 
 int main(int argc, char **argv) {
-    auto particles = std::vector<Particle3f>(
-        {Particle3f(Eigen::Vector3f(0, 0, 0), Eigen::Vector3f(0, 0, 0))});
+    World2f simulation(10, 100, -100, 100, -100, 1000, 0.001, true,
+                       "world.dump");
 
-    World simulation(100, -100, 100, -100, 100, -100, 10, particles, 0.01, true,
-                     "world.dump");
-
-    for (auto i = 0; i < 3; i++) {
+    for (auto i = 0; i < 1000; i++) {
         simulation.update_particles();
     }
 
