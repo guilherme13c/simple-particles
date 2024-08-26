@@ -119,6 +119,10 @@ class World2f {
     }
 
   public:
+    World2f(void)
+        : max_x(0), min_x(0), max_y(0), min_y(0), max_vel(0),
+          particles(std::vector<Particle2f>()), dt(0) {}
+
     World2f(float max_x, float min_x, float max_y, float min_y, float max_vel,
             std::vector<Particle2f> &particles, float dt,
             bool save_states = false, const std::string dump_file_name = "")
