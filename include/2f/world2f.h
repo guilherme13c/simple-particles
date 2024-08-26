@@ -90,6 +90,34 @@ class World2f {
         dump_file.flush();
     }
 
+    void setup_dumpfile(void) {
+        if (save_states) {
+            assert(dump_file_name != "");
+            save_configuration();
+            stop_worker = false;
+            worker_thread = std::thread(&World2f::save_state_to_file, this);
+        }
+    }
+
+    void save_state(void) {
+        if (save_states) {
+            std::vector<char> state_data;
+            state_data.reserve(particles.size() * sizeof(Particle2f));
+
+            for (const auto &p : particles) {
+                state_data.insert(
+                    state_data.end(), reinterpret_cast<const char *>(&p),
+                    reinterpret_cast<const char *>(&p) + sizeof(Particle2f));
+            }
+
+            {
+                std::unique_lock<std::mutex> lock(queue_mutex);
+                state_queue.push(std::move(state_data));
+                cv.notify_one();
+            }
+        }
+    }
+
   public:
     World2f(float max_x, float min_x, float max_y, float min_y, float max_vel,
             std::vector<Particle2f> &particles, float dt,
@@ -97,12 +125,7 @@ class World2f {
         : max_x(max_x), min_x(min_x), max_y(max_y), min_y(min_y),
           max_vel(max_vel), particles(particles), dt(dt),
           save_states(save_states), dump_file_name(dump_file_name) {
-        if (save_states) {
-            assert(dump_file_name != "");
-            save_configuration();
-            stop_worker = false;
-            worker_thread = std::thread(&World2f::save_state_to_file, this);
-        }
+        setup_dumpfile();
     }
 
     World2f(uint64_t N, float max_x, float min_x, float max_y, float min_y,
@@ -112,12 +135,7 @@ class World2f {
           max_vel(max_vel), dt(dt), save_states(save_states),
           dump_file_name(dump_file_name) {
         create_random_particles(N);
-        if (save_states) {
-            assert(dump_file_name != "");
-            save_configuration();
-            stop_worker = false;
-            worker_thread = std::thread(&World2f::save_state_to_file, this);
-        }
+        setup_dumpfile();
     }
 
     inline float &get_max_x(void) { return this->max_x; }
@@ -150,22 +168,7 @@ class World2f {
             }
         }
 
-        if (save_states) {
-            std::vector<char> state_data;
-            state_data.reserve(particles.size() * sizeof(Particle2f));
-
-            for (const auto &p : particles) {
-                state_data.insert(
-                    state_data.end(), reinterpret_cast<const char *>(&p),
-                    reinterpret_cast<const char *>(&p) + sizeof(Particle2f));
-            }
-
-            {
-                std::unique_lock<std::mutex> lock(queue_mutex);
-                state_queue.push(std::move(state_data));
-                cv.notify_one();
-            }
-        }
+        save_state();
     }
 
     ~World2f() {

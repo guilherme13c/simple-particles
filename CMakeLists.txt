@@ -20,34 +20,7 @@ target_link_libraries(simple-particles
     Eigen3::Eigen
 )
 
-# Executable for rendering the 3d simulation and generating video
-add_executable(render-simulation-3d visualize/generate_video_3f.cpp)
-target_link_libraries(render-simulation-3d
-    Eigen3::Eigen
-    OpenGL::GL
-    GLEW::GLEW
-    glfw
-    ${GLUT_LIBRARIES}
-)
-
-# Ensure GLEW and GLUT are properly linked
-if (GLEW_FOUND)
-    include_directories(${GLEW_INCLUDE_DIRS})
-    target_link_libraries(render-simulation-3d ${GLEW_LIBRARIES})
-endif()
-
-if (GLUT_FOUND)
-    include_directories(${GLUT_INCLUDE_DIR})
-    target_link_libraries(render-simulation-3d ${GLUT_LIBRARIES})
-endif()
-
-if (GLM_FOUND)
-    include_directories(${GLM_INCLUDE_DIRS})
-    target_link_libraries(render-simulation-3d ${GLM_LIBRARIES})
-endif()
-
-# Link OpenGL libraries
-target_link_libraries(render-simulation-3d ${OPENGL_LIBRARIES})
+set_property(TARGET simple-particles PROPERTY CXX_STANDARD 17)
 
 # Executable for rendering the 2d simulation and generating video
 add_executable(render-simulation-2d visualize/generate_video_2f.cpp)
