@@ -22,6 +22,7 @@ class World2f {
     std::vector<Particle2f> particles;
 
     float dt;
+    uint64_t duration;
     bool save_states;
 
     std::string dump_file_name;
@@ -125,15 +126,16 @@ class World2f {
   public:
     World2f(void)
         : max_x(0), min_x(0), max_y(0), min_y(0), max_vel(0),
-          particles(std::vector<Particle2f>()), dt(0), damping_factor(0) {
+          particles(std::vector<Particle2f>()), dt(0.1), duration(10),
+          damping_factor(0) {
         interaction_kernel = [](Particle2f &p1, Particle2f &p2) {};
     }
 
     World2f(float max_x, float min_x, float max_y, float min_y, float max_vel,
-            std::vector<Particle2f> &particles, float dt,
+            std::vector<Particle2f> &particles, float dt, uint64_t duration,
             bool save_states = false, const std::string dump_file_name = "")
         : max_x(max_x), min_x(min_x), max_y(max_y), min_y(min_y),
-          max_vel(max_vel), particles(particles), dt(dt),
+          max_vel(max_vel), particles(particles), dt(dt), duration(duration),
           save_states(save_states), dump_file_name(dump_file_name),
           damping_factor(0) {
         interaction_kernel = [](Particle2f &p1, Particle2f &p2) {};
@@ -141,11 +143,12 @@ class World2f {
     }
 
     World2f(uint64_t N, float max_x, float min_x, float max_y, float min_y,
-            float max_vel, float dt, bool save_states = false,
-            const std::string dump_file_name = "")
+            float max_vel, float dt, uint64_t duration,
+            bool save_states = false, const std::string dump_file_name = "")
         : max_x(max_x), min_x(min_x), max_y(max_y), min_y(min_y),
-          max_vel(max_vel), dt(dt), save_states(save_states),
-          dump_file_name(dump_file_name), damping_factor(0) {
+          max_vel(max_vel), dt(dt), duration(duration),
+          save_states(save_states), dump_file_name(dump_file_name),
+          damping_factor(0) {
         create_random_particles(N);
         interaction_kernel = [](Particle2f &p1, Particle2f &p2) {};
         setup_dumpfile();
@@ -196,8 +199,6 @@ class World2f {
                 vel.y() *= -1;
             }
         }
-
-        save_state();
     }
 
     ~World2f() {
@@ -213,4 +214,12 @@ class World2f {
             }
         }
     }
+
+    void run(void) {
+        const uint64_t step_count = duration * (1.0 / dt);
+        for (auto i = 0; i < step_count; i++) {
+            update_particles();
+            save_state();
+        }
+    };
 };

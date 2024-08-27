@@ -21,13 +21,13 @@ void kernel(Particle2f &p1, Particle2f &p2) {
 }
 
 int main(int argc, char **argv) {
-    World2f simulation(400, 100, -100, 100, -100, 0, 0.01, true, "world.dump");
+    World2f simulation(400, 100, -100, 100, -100, 0, 0.1, 10, true,
+                       "world.dump");
+
     simulation.set_interaction_kernel(kernel);
     simulation.set_damping_factor(0.15);
 
-    for (auto i = 0; i < 100; i++) {
-        simulation.update_particles();
-    }
+    simulation.run();
 
     return 0;
 }
