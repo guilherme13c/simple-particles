@@ -32,6 +32,10 @@ class World2f {
     std::thread worker_thread;
     std::atomic<bool> stop_worker{false};
 
+    float damping_factor;
+
+    void (*interaction_kernel)(Particle2f &, Particle2f &);
+
     void create_random_particles(size_t N) {
         particles.clear();    // Clear existing particles
         particles.reserve(N); // Reserve space for efficiency
@@ -121,14 +125,18 @@ class World2f {
   public:
     World2f(void)
         : max_x(0), min_x(0), max_y(0), min_y(0), max_vel(0),
-          particles(std::vector<Particle2f>()), dt(0) {}
+          particles(std::vector<Particle2f>()), dt(0), damping_factor(0) {
+        interaction_kernel = [](Particle2f &p1, Particle2f &p2) {};
+    }
 
     World2f(float max_x, float min_x, float max_y, float min_y, float max_vel,
             std::vector<Particle2f> &particles, float dt,
             bool save_states = false, const std::string dump_file_name = "")
         : max_x(max_x), min_x(min_x), max_y(max_y), min_y(min_y),
           max_vel(max_vel), particles(particles), dt(dt),
-          save_states(save_states), dump_file_name(dump_file_name) {
+          save_states(save_states), dump_file_name(dump_file_name),
+          damping_factor(0) {
+        interaction_kernel = [](Particle2f &p1, Particle2f &p2) {};
         setup_dumpfile();
     }
 
@@ -137,9 +145,19 @@ class World2f {
             const std::string dump_file_name = "")
         : max_x(max_x), min_x(min_x), max_y(max_y), min_y(min_y),
           max_vel(max_vel), dt(dt), save_states(save_states),
-          dump_file_name(dump_file_name) {
+          dump_file_name(dump_file_name), damping_factor(0) {
         create_random_particles(N);
+        interaction_kernel = [](Particle2f &p1, Particle2f &p2) {};
         setup_dumpfile();
+    }
+
+    inline void set_interaction_kernel(
+        void (*interaction_kernel)(Particle2f &, Particle2f &)) {
+        this->interaction_kernel = interaction_kernel;
+    }
+
+    inline void set_damping_factor(const float rho) {
+        this->damping_factor = rho;
     }
 
     inline float &get_max_x(void) { return this->max_x; }
@@ -149,7 +167,14 @@ class World2f {
     inline float &get_min_y(void) { return this->min_y; }
 
     void update_particles(void) {
+        for (size_t i = 0; i < particles.size(); ++i) {
+            for (size_t j = i + 1; j < particles.size(); ++j) {
+                interaction_kernel(particles[i], particles[j]);
+            }
+        }
+
         for (auto &p : this->particles) {
+            p.get_velocity() *= (1 - damping_factor);
             p.get_position() += p.get_velocity() * this->dt;
 
             auto &pos = p.get_position();
