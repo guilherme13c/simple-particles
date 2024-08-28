@@ -23,26 +23,15 @@ class World2f {
   private:
     bool should_run;
 
-    float max_x;
-    float min_x;
-    float max_y;
-    float min_y;
-    float max_vel;
-
-    spatial_property_2f positions;
-    spatial_property_2f velocities;
-
-    uint64_t N;
-    float dt;
-    uint64_t duration;
-
-    float damping_factor;
+    float max_x, min_x, max_y, min_y, max_vel, damping_factor, dt;
+    spatial_property_2f positions, velocities;
+    uint64_t N, duration;
 
     std::ofstream dump_file;
 
     void kernel(const size_t p1, const size_t p2) {
-        const float dx = positions.x[p2] - positions.x[p1];
-        const float dy = positions.y[p2] - positions.y[p1];
+        const float dx = positions.x[p2] - positions.x[p1],
+                    dy = positions.y[p2] - positions.y[p1];
         const float dist2 = dx * dx + dy * dy;
 
         if (dist2 < 0.01f || dist2 > 10000.0)
