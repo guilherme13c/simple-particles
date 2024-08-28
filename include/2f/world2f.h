@@ -36,6 +36,8 @@ class World2f {
     void render_particles(void);
 #endif
 
+    void compute(void);
+
   public:
     World2f(void);
 

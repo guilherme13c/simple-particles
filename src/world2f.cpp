@@ -87,6 +87,12 @@ void World2f::render_particles(void) {
 }
 #endif
 
+void World2f::compute(void) {
+    while (should_run) {
+        update_particles();
+    }
+}
+
 World2f::World2f(void)
     : N(0), max_x(0), min_x(0), max_y(0), min_y(0), max_vel(0), dt(0.1),
       duration(10), damping_factor(0),
@@ -143,14 +149,13 @@ void World2f::update_particles(void) {
 void World2f::run(void) {
     should_run = true;
 
+    std::thread compute_thread(&World2f::compute, this);
+
 #ifdef GRAPHICS
     std::thread render_thread(&World2f::render_particles, this);
 #endif
 
-    while (should_run) {
-        update_particles();
-    }
-
+    compute_thread.join();
 #ifdef GRAPHICS
     render_thread.join();
 #endif
