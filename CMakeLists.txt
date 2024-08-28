@@ -3,13 +3,15 @@ project(simple_particles)
 
 include(/home/guilherme/vcpkg/scripts/buildsystems/vcpkg.cmake)
 
-include_directories(include)
+set(OpenGL_GL_PREFERENCE GLVND)
 
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glfw3 3.3 REQUIRED)
 
 add_executable(simple_particles main.cpp)
+
+include_directories(include)
 
 target_compile_definitions(simple_particles PRIVATE GRAPHICS)
 

@@ -1,9 +1,11 @@
 #include <2f.h>
 
-int main(int argc, char **argv) {
+int main(const int argc, char **argv) {
     assert(argc == 2);
 
-    World2f simulation(std::atoi(argv[1]), 100, -100, 100, -100, 10, 0.01, 10);
+    const uint64_t N = std::strtol(argv[1], nullptr, 10);
+
+    World2f simulation(N, 100, -100, 100, -100, 10, 0.01, 10);
 
     simulation.set_damping_factor(0.01);
 
