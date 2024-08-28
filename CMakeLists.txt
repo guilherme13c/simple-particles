@@ -9,7 +9,7 @@ find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glfw3 3.3 REQUIRED)
 
-add_executable(simple_particles main.cpp)
+add_executable(simple_particles src/main.cpp src/world2f.cpp)
 
 include_directories(include)
 
