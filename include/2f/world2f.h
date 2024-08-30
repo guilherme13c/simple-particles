@@ -10,7 +10,9 @@
 #include <vector>
 
 #include <2f/structs.h>
+
 #include <CL/opencl.hpp>
+#include <mpi.h>
 
 #ifdef GRAPHICS
 #include <GL/glew.h>
@@ -29,6 +31,15 @@ class World2f {
     cl::CommandQueue queue;
     cl::Program program;
     cl::Kernel kernel;
+
+    int mpi_rank, mpi_size;
+
+    MPI_Comm mpi_comm;
+    uint64_t local_N;
+
+    void partition_particles(void);
+
+    void exchange_boundary_data(void);
 
     void init_opencl(void);
 
@@ -49,6 +60,8 @@ class World2f {
 
     World2f(uint64_t N, float max_x, float min_x, float max_y, float min_y,
             float max_vel, float dt);
+
+    ~World2f(void);
 
     void set_damping_factor(const float xi);
 

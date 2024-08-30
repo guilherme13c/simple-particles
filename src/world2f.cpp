@@ -81,15 +81,26 @@ void World2f::compute(void) {
 
 World2f::World2f(void)
     : N(0), max_x(0), min_x(0), max_y(0), min_y(0), max_vel(0), dt(0.1),
-      damping_factor(0), should_run(false) {}
+      damping_factor(0), should_run(false) {
+    MPI_Init(nullptr, nullptr);
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+    mpi_comm = MPI_COMM_WORLD;
+}
 
 World2f::World2f(uint64_t N, float max_x, float min_x, float max_y, float min_y,
                  float max_vel, float dt)
     : N(N), max_x(max_x), min_x(min_x), max_y(max_y), min_y(min_y),
       max_vel(max_vel), dt(dt), damping_factor(0), should_run(false) {
+    MPI_Init(nullptr, nullptr);
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+    mpi_comm = MPI_COMM_WORLD;
 
     create_random_particles();
 }
+
+World2f::~World2f(void) { MPI_Finalize(); }
 
 void World2f::set_damping_factor(const float xi) { damping_factor = xi; }
 
@@ -140,16 +151,30 @@ void World2f::update_positions(void) {
 void World2f::run(void) {
     should_run = true;
 
+    std::cout << "Starting compute thread\n";
     std::thread compute_thread(&World2f::compute, this);
 
+    if (mpi_rank == 0) {
 #ifdef GRAPHICS
-    std::thread render_thread(&World2f::render_particles, this);
+        std::cout << "Starting rendering thread\n";
+        std::thread render_thread(&World2f::render_particles, this);
+        render_thread.join();
 #endif
+    }
+
+    while (true) {
+        MPI_Bcast(&should_run, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
+
+        if (!should_run) {
+            break;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
 
     compute_thread.join();
-#ifdef GRAPHICS
-    render_thread.join();
-#endif
+
+    MPI_Barrier(MPI_COMM_WORLD);
 }
 
 void World2f::init_opencl() {
@@ -172,7 +197,7 @@ void World2f::init_opencl() {
     context = cl::Context({device});
     queue = cl::CommandQueue(context, device);
 
-    std::ifstream kernel_file("src/kernel.cl");
+    std::ifstream kernel_file("kernel/lenard_jhones.cl");
     std::string kernel_source((std::istreambuf_iterator<char>(kernel_file)),
                               std::istreambuf_iterator<char>());
     cl::Program::Sources sources;
@@ -217,4 +242,49 @@ void World2f::run_opencl_kernel() {
                             velocities.x.data());
     queue.enqueueReadBuffer(velocities_y_buffer, CL_TRUE, 0, sizeof(float) * N,
                             velocities.y.data());
+}
+
+void World2f::partition_particles() {
+    float x_range = max_x - min_x;
+    float x_per_process = x_range / mpi_size;
+    float local_min_x = min_x + mpi_rank * x_per_process;
+    float local_max_x = local_min_x + x_per_process;
+
+    std::vector<float> new_positions_x;
+    std::vector<float> new_positions_y;
+    std::vector<float> new_velocities_x;
+    std::vector<float> new_velocities_y;
+
+    for (size_t i = 0; i < N; ++i) {
+        if (positions.x[i] >= local_min_x && positions.x[i] < local_max_x) {
+            new_positions_x.push_back(positions.x[i]);
+            new_positions_y.push_back(positions.y[i]);
+            new_velocities_x.push_back(velocities.x[i]);
+            new_velocities_y.push_back(velocities.y[i]);
+        }
+    }
+
+    positions.x = new_positions_x;
+    positions.y = new_positions_y;
+    velocities.x = new_velocities_x;
+    velocities.y = new_velocities_y;
+
+    local_N = positions.x.size();
+}
+
+void World2f::exchange_boundary_data() {
+    MPI_Request request;
+    MPI_Status status;
+
+    if (mpi_rank < mpi_size - 1) {
+        MPI_Isend(&positions.x[local_N - 1], 1, MPI_FLOAT, mpi_rank + 1, 0,
+                  mpi_comm, &request);
+        MPI_Wait(&request, &status);
+    }
+
+    if (mpi_rank > 0) {
+        MPI_Irecv(&positions.x[0], 1, MPI_FLOAT, mpi_rank - 1, 0, mpi_comm,
+                  &request);
+        MPI_Wait(&request, &status);
+    }
 }
