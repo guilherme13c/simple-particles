@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <2f/structs.h>
+#include <CL/opencl.hpp>
 
 #ifdef GRAPHICS
 #include <GL/glew.h>
@@ -24,19 +25,18 @@ class World2f {
     spatial_property_2f positions, velocities;
     uint64_t N;
 
-    uint64_t grid_size_x, grid_size_y;
-    float subdomain_width, subdomain_height;
-    std::vector<std::vector<std::vector<size_t>>> subdomains;
+    cl::Context context;
+    cl::CommandQueue queue;
+    cl::Program program;
+    cl::Kernel kernel;
 
-    void kernel(const size_t p1, const size_t p2);
+    void init_opencl(void);
+
+    void run_opencl_kernel(void);
 
     void create_random_particles(void);
 
-    void update_subdomain_particles(uint64_t grid_x, uint64_t grid_y);
-
     void update_positions(void);
-
-    void update_particles(void);
 
 #ifdef GRAPHICS
     void render_particles(void);
@@ -44,14 +44,11 @@ class World2f {
 
     void compute(void);
 
-    void assign_particles_to_subdomains(void);
-
   public:
     World2f(void);
 
     World2f(uint64_t N, float max_x, float min_x, float max_y, float min_y,
-            float max_vel, float dt, uint64_t duration,
-            uint64_t grid_size_x = 1, uint64_t grid_size_y = 1);
+            float max_vel, float dt);
 
     void set_damping_factor(const float xi);
 
