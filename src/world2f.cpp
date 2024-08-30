@@ -1,19 +1,27 @@
 #include <2f/world2f.h>
 
 void World2f::kernel(const size_t p1, const size_t p2) {
-    const float dx = positions.x[p2] - positions.x[p1],
-                dy = positions.y[p2] - positions.y[p1];
-    const float dist2 = dx * dx + dy * dy;
+    const float dx = positions.x[p2] - positions.x[p1];
+    const float dy = positions.y[p2] - positions.y[p1];
+    float dist2 = dx * dx + dy * dy;
 
-    if (dist2 < 0.01f || dist2 > 10000.0)
-        return;
+    const float sigma = 5.0f;
+    const float epsilon = 1.0f;
 
-    const float force = 1.0f / dist2;
+    if (dist2 < 400.0f) {
+        float invDist2 = 1.0f / dist2;
+        float invDist6 = invDist2 * invDist2 * invDist2;
+        float invDist12 = invDist6 * invDist6;
 
-    velocities.x[p1] += force * dx;
-    velocities.y[p1] += force * dy;
-    velocities.x[p2] -= force * dx;
-    velocities.y[p2] -= force * dy;
+        float forceMagnitude =
+            24 * epsilon * (2 * invDist12 - invDist6) * invDist2;
+
+        velocities.x[p1] += forceMagnitude * dx;
+        velocities.y[p1] += forceMagnitude * dy;
+
+        velocities.x[p2] -= forceMagnitude * dx;
+        velocities.y[p2] -= forceMagnitude * dy;
+    }
 }
 
 void World2f::create_random_particles(void) {
@@ -46,10 +54,10 @@ void World2f::render_particles(void) {
     float world_height = max_y - min_y;
     float aspect_ratio = world_width / world_height;
 
-    int window_width = 1200;
+    int window_width = 800;
     int window_height = static_cast<int>(window_width / aspect_ratio);
     if (aspect_ratio > 1.0f) {
-        window_height = 1200;
+        window_height = 800;
         window_width = static_cast<int>(window_height * aspect_ratio);
     }
 
@@ -98,19 +106,81 @@ World2f::World2f(void)
       duration(10), damping_factor(0), should_run(false) {}
 
 World2f::World2f(uint64_t N, float max_x, float min_x, float max_y, float min_y,
-                 float max_vel, float dt, uint64_t duration)
+                 float max_vel, float dt, uint64_t duration,
+                 uint64_t grid_size_x, uint64_t grid_size_y)
     : N(N), max_x(max_x), min_x(min_x), max_y(max_y), min_y(min_y),
-      max_vel(max_vel), dt(dt), duration(duration), damping_factor(0), should_run(false) {
+      max_vel(max_vel), dt(dt), duration(duration), damping_factor(0),
+      should_run(false), grid_size_x(grid_size_x), grid_size_y(grid_size_y) {
+
+    subdomain_width = (max_x - min_x) / grid_size_x;
+    subdomain_height = (max_y - min_y) / grid_size_y;
+    subdomains.resize(grid_size_x,
+                      std::vector<std::vector<size_t>>(grid_size_y));
+
     create_random_particles();
+    assign_particles_to_subdomains();
+}
+
+void World2f::assign_particles_to_subdomains(void) {
+    for (uint64_t i = 0; i < N; i++) {
+        uint64_t grid_x =
+            static_cast<uint64_t>((positions.x[i] - min_x) / subdomain_width);
+        uint64_t grid_y =
+            static_cast<uint64_t>((positions.y[i] - min_y) / subdomain_height);
+
+        grid_x = std::min(grid_x, grid_size_x - 1);
+        grid_y = std::min(grid_y, grid_size_y - 1);
+
+        subdomains[grid_x][grid_y].push_back(i);
+    }
 }
 
 void World2f::set_damping_factor(const float xi) { damping_factor = xi; }
 
-void World2f::update_particles(void) {
-    for (uint64_t i = 0; i < N; ++i) {
-        for (uint64_t j = i + 1; j < N; ++j) {
-            kernel(i, j);
+void World2f::update_subdomain_particles(uint64_t grid_x, uint64_t grid_y) {
+    auto &subdomain_particles = subdomains[grid_x][grid_y];
+
+    for (size_t i = 0; i < subdomain_particles.size(); ++i) {
+        size_t p1 = subdomain_particles[i];
+
+        for (size_t j = i + 1; j < subdomain_particles.size(); ++j) {
+            size_t p2 = subdomain_particles[j];
+            kernel(p1, p2);
         }
+
+        for (int nx = -1; nx <= 1; ++nx) {
+            for (int ny = -1; ny <= 1; ++ny) {
+                int neighbor_x = grid_x + nx;
+                int neighbor_y = grid_y + ny;
+
+                if (neighbor_x >= 0 && neighbor_x < grid_size_x &&
+                    neighbor_y >= 0 && neighbor_y < grid_size_y &&
+                    (nx != 0 || ny != 0)) {
+
+                    auto &neighbor_particles =
+                        subdomains[neighbor_x][neighbor_y];
+                    for (size_t k = 0; k < neighbor_particles.size(); ++k) {
+                        size_t p2 = neighbor_particles[k];
+                        kernel(p1, p2);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void World2f::update_particles(void) {
+    std::vector<std::thread> threads;
+
+    for (uint64_t grid_x = 0; grid_x < grid_size_x; ++grid_x) {
+        for (uint64_t grid_y = 0; grid_y < grid_size_y; ++grid_y) {
+            threads.emplace_back(&World2f::update_subdomain_particles, this,
+                                 grid_x, grid_y);
+        }
+    }
+
+    for (auto &thread : threads) {
+        thread.join();
     }
 
     for (uint64_t i = 0; i < N; ++i) {
@@ -137,6 +207,13 @@ void World2f::update_particles(void) {
             velocities.y[i] *= -1;
         }
     }
+
+    for (auto &column : subdomains) {
+        for (auto &subdomain : column) {
+            subdomain.clear();
+        }
+    }
+    assign_particles_to_subdomains();
 
     std::this_thread::sleep_for(
         std::chrono::milliseconds(static_cast<int>(dt * 1000)));
