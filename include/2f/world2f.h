@@ -22,7 +22,7 @@ class World2f {
 
     float max_x, min_x, max_y, min_y, max_vel, damping_factor, dt;
     spatial_property_2f positions, velocities;
-    uint64_t N, duration;
+    uint64_t N;
 
     uint64_t grid_size_x, grid_size_y;
     float subdomain_width, subdomain_height;
@@ -33,6 +33,8 @@ class World2f {
     void create_random_particles(void);
 
     void update_subdomain_particles(uint64_t grid_x, uint64_t grid_y);
+
+    void update_positions(void);
 
     void update_particles(void);
 

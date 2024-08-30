@@ -103,14 +103,14 @@ void World2f::compute(void) {
 
 World2f::World2f(void)
     : N(0), max_x(0), min_x(0), max_y(0), min_y(0), max_vel(0), dt(0.1),
-      duration(10), damping_factor(0), should_run(false) {}
+      damping_factor(0), should_run(false) {}
 
 World2f::World2f(uint64_t N, float max_x, float min_x, float max_y, float min_y,
                  float max_vel, float dt, uint64_t duration,
                  uint64_t grid_size_x, uint64_t grid_size_y)
     : N(N), max_x(max_x), min_x(min_x), max_y(max_y), min_y(min_y),
-      max_vel(max_vel), dt(dt), duration(duration), damping_factor(0),
-      should_run(false), grid_size_x(grid_size_x), grid_size_y(grid_size_y) {
+      max_vel(max_vel), dt(dt), damping_factor(0), should_run(false),
+      grid_size_x(grid_size_x), grid_size_y(grid_size_y) {
 
     subdomain_width = (max_x - min_x) / grid_size_x;
     subdomain_height = (max_y - min_y) / grid_size_y;
@@ -169,6 +169,50 @@ void World2f::update_subdomain_particles(uint64_t grid_x, uint64_t grid_y) {
     }
 }
 
+void World2f::update_positions(void) {
+    std::vector<std::thread> threads;
+
+    const size_t num_threads = std::thread::hardware_concurrency();
+    const size_t particles_per_thread = N / num_threads;
+
+    for (size_t t = 0; t < num_threads; ++t) {
+        threads.emplace_back([&, t]() {
+            size_t start = t * particles_per_thread;
+            size_t end =
+                (t == num_threads - 1) ? N : start + particles_per_thread;
+
+            for (size_t i = start; i < end; ++i) {
+                velocities.x[i] *= (1 - damping_factor * this->dt);
+                velocities.y[i] *= (1 - damping_factor * this->dt);
+
+                positions.x[i] += velocities.x[i] * this->dt;
+                positions.y[i] += velocities.y[i] * this->dt;
+
+                if (positions.x[i] < min_x) {
+                    positions.x[i] = min_x;
+                    velocities.x[i] *= -1;
+                }
+                if (positions.x[i] > max_x) {
+                    positions.x[i] = max_x;
+                    velocities.x[i] *= -1;
+                }
+                if (positions.y[i] < min_y) {
+                    positions.y[i] = min_y;
+                    velocities.y[i] *= -1;
+                }
+                if (positions.y[i] > max_y) {
+                    positions.y[i] = max_y;
+                    velocities.y[i] *= -1;
+                }
+            }
+        });
+    }
+
+    for (auto &thread : threads) {
+        thread.join();
+    }
+}
+
 void World2f::update_particles(void) {
     std::vector<std::thread> threads;
 
@@ -183,30 +227,7 @@ void World2f::update_particles(void) {
         thread.join();
     }
 
-    for (uint64_t i = 0; i < N; ++i) {
-        velocities.x[i] *= (1 - damping_factor * this->dt);
-        velocities.y[i] *= (1 - damping_factor * this->dt);
-
-        positions.x[i] += velocities.x[i] * this->dt;
-        positions.y[i] += velocities.y[i] * this->dt;
-
-        if (positions.x[i] < min_x) {
-            positions.x[i] = min_x;
-            velocities.x[i] *= -1;
-        }
-        if (positions.x[i] > max_x) {
-            positions.x[i] = max_x;
-            velocities.x[i] *= -1;
-        }
-        if (positions.y[i] < min_y) {
-            positions.y[i] = min_y;
-            velocities.y[i] *= -1;
-        }
-        if (positions.y[i] > max_y) {
-            positions.y[i] = max_y;
-            velocities.y[i] *= -1;
-        }
-    }
+    update_positions();
 
     for (auto &column : subdomains) {
         for (auto &subdomain : column) {
