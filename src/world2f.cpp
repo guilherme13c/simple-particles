@@ -95,18 +95,14 @@ void World2f::compute(void) {
 
 World2f::World2f(void)
     : N(0), max_x(0), min_x(0), max_y(0), min_y(0), max_vel(0), dt(0.1),
-      duration(10), damping_factor(0),
-      dump_file("dumpfile.bin", std::ios::binary), should_run(false) {}
+      duration(10), damping_factor(0), should_run(false) {}
 
 World2f::World2f(uint64_t N, float max_x, float min_x, float max_y, float min_y,
                  float max_vel, float dt, uint64_t duration)
     : N(N), max_x(max_x), min_x(min_x), max_y(max_y), min_y(min_y),
-      max_vel(max_vel), dt(dt), duration(duration), damping_factor(0),
-      dump_file("dumpfile.bin", std::ios::binary), should_run(false) {
+      max_vel(max_vel), dt(dt), duration(duration), damping_factor(0), should_run(false) {
     create_random_particles();
 }
-
-World2f::~World2f() { dump_file.close(); }
 
 void World2f::set_damping_factor(const float xi) { damping_factor = xi; }
 

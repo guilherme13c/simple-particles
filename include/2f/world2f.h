@@ -24,8 +24,6 @@ class World2f {
     spatial_property_2f positions, velocities;
     uint64_t N, duration;
 
-    std::ofstream dump_file;
-
     void kernel(const size_t p1, const size_t p2);
 
     void create_random_particles(void);
@@ -43,8 +41,6 @@ class World2f {
 
     World2f(uint64_t N, float max_x, float min_x, float max_y, float min_y,
             float max_vel, float dt, uint64_t duration);
-
-    ~World2f(void);
 
     void set_damping_factor(const float xi);
 
