@@ -3,7 +3,7 @@ typedef struct {
     float y;
 } vec2f;
 
-__kernel void pair_difference(const unsigned long size, __global const vec2f* p, __global vec2f* dist) {
+__kernel void pair_differences(const unsigned long size, __global const vec2f* p, __global vec2f* dist) {
     int gid = get_global_id(0);
 
     int i = gid / size;

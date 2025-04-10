@@ -11,7 +11,7 @@
 
 constexpr int WIDTH = 1200;
 constexpr int HEIGHT = 900;
-constexpr unsigned long size = 10000;
+constexpr unsigned long size = 3;
 
 int main() {
     auto oclw = OpenClWrapper();
@@ -21,20 +21,25 @@ int main() {
     program = cl::Program(
         oclw.context, oclw.load_program("kernel/update_positions.cl"), true);
 
-    cl::Kernel update_positions(program, "update_positions");
+    cl::Kernel update_positions_kernel(program, "update_positions");
 
     cl::Buffer p_buffer(oclw.context, CL_MEM_READ_WRITE,
                         sizeof(SDL_FPoint) * size);
     cl::Buffer v_buffer(oclw.context, CL_MEM_READ_WRITE,
                         sizeof(SDL_FPoint) * size);
 
-    program = cl::Program(oclw.context,
-                          oclw.load_program("kernel/pair_difference.cl"), true);
+    program = cl::Program(
+        oclw.context, oclw.load_program("kernel/pair_differences.cl"), true);
 
-    cl::Kernel pair_difference(program, "pair_difference");
+    cl::Kernel pair_differences_kernel(program, "pair_differences");
 
     cl::Buffer d_buffer(oclw.context, CL_MEM_READ_WRITE,
                         sizeof(SDL_FPoint) * size * size);
+
+    program = cl::Program(oclw.context,
+                          oclw.load_program("kernel/compute_forces.cl"), true);
+
+    cl::Kernel compute_forces(program, "compute_forces");
 
     SDL_Init(SDL_INIT_VIDEO);
 
@@ -89,23 +94,30 @@ int main() {
             cl::copy(oclw.queue, p.begin(), p.end(), p_buffer);
             cl::copy(oclw.queue, v.begin(), v.end(), v_buffer);
 
-            pair_difference.setArg(0, size);
-            pair_difference.setArg(1, p_buffer);
-            pair_difference.setArg(2, d_buffer);
+            pair_differences_kernel.setArg(0, size);
+            pair_differences_kernel.setArg(1, p_buffer);
+            pair_differences_kernel.setArg(2, d_buffer);
 
-            oclw.queue.enqueueNDRangeKernel(pair_difference, cl::NullRange,
+            oclw.queue.enqueueNDRangeKernel(pair_differences_kernel,
+                                            cl::NullRange, global, local);
+
+            compute_forces.setArg(0, size);
+            compute_forces.setArg(1, d_buffer);
+            compute_forces.setArg(2, v_buffer);
+
+            oclw.queue.enqueueNDRangeKernel(compute_forces, cl::NullRange,
                                             global, local);
 
-            update_positions.setArg(0, p_buffer);
-            update_positions.setArg(1, v_buffer);
-            update_positions.setArg(2, deltaTime);
+            update_positions_kernel.setArg(0, p_buffer);
+            update_positions_kernel.setArg(1, v_buffer);
+            update_positions_kernel.setArg(2, deltaTime);
 
-            oclw.queue.enqueueNDRangeKernel(update_positions, cl::NullRange,
-                                            global, local);
-
-            oclw.queue.finish();
+            oclw.queue.enqueueNDRangeKernel(update_positions_kernel,
+                                            cl::NullRange, global, local);
 
             cl::copy(oclw.queue, p_buffer, p.begin(), p.end());
+
+            oclw.queue.finish();
         }
 
         while (SDL_PollEvent(&e)) {
@@ -121,6 +133,12 @@ int main() {
             SDL_RenderPoints(ren, p.data(), p.size());
         }
         SDL_RenderPresent(ren);
+
+        for (auto i = 0; i < size; i++) {
+            std::cout << i << " -> " << v[i].x << " " << v[i].y << std::endl;
+        }
+
+        SDL_Delay(16);
     }
 
     SDL_DestroyRenderer(ren);
