@@ -14,6 +14,7 @@ add_executable(simple-particles
 find_package(OpenCL REQUIRED)
 target_link_libraries(simple-particles OpenCL::OpenCL)
 set(CL_HPP_TARGET_OPENCL_VERSION 300)
+set(CL_HPP_ENABLE_EXCEPTIONS)
 
 # SDL3
 find_package(SDL3 REQUIRED)
