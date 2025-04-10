@@ -62,20 +62,19 @@ int main() {
 
     std::random_device dev;
     std::mt19937 rng(dev());
-    std::uniform_real_distribution<> distW(0, WIDTH), distH(0, HEIGHT),
-        distV(-10, 10);
+    std::uniform_real_distribution<> distW(0, WIDTH), distH(0, HEIGHT);
 
     std::vector<SDL_FPoint> positions(size), velocities(size);
 
     for (auto i = 0; i < size; i++) {
         positions[i].x = distW(rng);
         positions[i].y = distH(rng);
-        velocities[i].x = distV(rng);
-        velocities[i].y = distV(rng);
+        velocities[i].x = 0;
+        velocities[i].y = 0;
     }
 
-    cl::NDRange global(1024);
-    cl::NDRange local(64);
+    cl::NDRange global(4096);
+    cl::NDRange local(128);
 
     SDL_Event e;
     bool quit = false;
@@ -144,8 +143,6 @@ int main() {
             SDL_RenderPoints(ren, positions.data(), positions.size());
 
             SDL_RenderPresent(ren);
-
-            // SDL_Delay(16);
         }
     }
 
