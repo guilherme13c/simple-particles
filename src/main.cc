@@ -28,6 +28,14 @@ int main() {
     cl::Buffer v_buffer(oclw.context, CL_MEM_READ_WRITE,
                         sizeof(SDL_FPoint) * size);
 
+    program = cl::Program(oclw.context,
+                          oclw.load_program("kernel/pair_difference.cl"), true);
+
+    cl::Kernel pair_difference(program, "pair_difference");
+
+    cl::Buffer d_buffer(oclw.context, CL_MEM_READ_WRITE,
+                        sizeof(SDL_FPoint) * size * size);
+
     SDL_Init(SDL_INIT_VIDEO);
 
     SDL_Window *win = SDL_CreateWindow("Simple Particles", WIDTH, HEIGHT, 0);
@@ -60,8 +68,8 @@ int main() {
         v[i].y = distV(rng);
     }
 
-    cl::NDRange global(1024);
-    cl::NDRange local(64);
+    cl::NDRange global(4096);
+    cl::NDRange local(128);
 
     SDL_Event e;
     bool quit = false;
@@ -77,15 +85,16 @@ int main() {
         lastTime = currentTime;
         deltaTime = elapsed.count();
 
-        while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_EVENT_QUIT) {
-                quit = true;
-            }
-        }
-
         {
             cl::copy(oclw.queue, p.begin(), p.end(), p_buffer);
             cl::copy(oclw.queue, v.begin(), v.end(), v_buffer);
+
+            pair_difference.setArg(0, size);
+            pair_difference.setArg(1, p_buffer);
+            pair_difference.setArg(2, d_buffer);
+
+            oclw.queue.enqueueNDRangeKernel(pair_difference, cl::NullRange,
+                                            global, local);
 
             update_positions.setArg(0, p_buffer);
             update_positions.setArg(1, v_buffer);
@@ -97,6 +106,12 @@ int main() {
             oclw.queue.finish();
 
             cl::copy(oclw.queue, p_buffer, p.begin(), p.end());
+        }
+
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_EVENT_QUIT) {
+                quit = true;
+            }
         }
 
         SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
